@@ -1,0 +1,10 @@
+{
+    "id": "drag-and-drop-blocks",
+    "name": "Drag and Drop Blocks",
+    "version": "1.0.0",
+    "minAppVersion": "0.15.0",
+    "description": "Reorder blocks by dragging and dropping.",
+    "author": "Your Name",
+    "authorUrl": "https://github.com/yourusername",
+    "isDesktopOnly": false
+}
