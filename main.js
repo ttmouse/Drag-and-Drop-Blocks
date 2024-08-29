@@ -33,83 +33,241 @@ var BlockReorderPlugin = class extends import_obsidian.Plugin {
     super(...arguments);
     this.draggingElement = null;
     this.dragStartY = 0;
+    this.originalContent = "";
+    this.currentLine = null;
+    this.hideTimeout = null;
+    this.onMouseMove = (event2) => {
+      if (this.draggingElement)
+        return;
+      const target = event2.target;
+      const cmLine = this.getNearestLine(event2.clientX, event2.clientY);
+      if (cmLine) {
+        this.currentLine = cmLine;
+        this.showDragHandle(cmLine);
+      } else if (this.dragHandle && !this.isMouseNearHandle(event2)) {
+        this.hideDragHandle();
+      }
+    };
+    this.hideDragHandle = () => {
+      if (this.dragHandle) {
+        setTimeout(() => {
+          if (this.dragHandle && !this.isMouseNearHandle(event)) {
+            this.dragHandle.style.display = "none";
+          }
+        }, 100);
+      }
+    };
+    this.onDragStart = (event2) => {
+      if (this.currentLine) {
+        this.draggingElement = this.currentLine;
+        this.dragStartY = event2.clientY;
+        this.hideDragHandle();
+        this.dragPreview.innerHTML = this.draggingElement.innerHTML;
+        this.dragPreview.style.display = "block";
+        this.dragPreview.style.top = `${event2.clientY}px`;
+        this.dragPreview.style.left = `${event2.clientX}px`;
+        this.draggingElement.classList.add("dragging");
+        this.originalContent = this.draggingElement.innerHTML;
+        event2.preventDefault();
+        event2.stopPropagation();
+      }
+    };
+    this.onDragMove = (event2) => {
+      if (this.draggingElement) {
+        this.hideDragHandle();
+        this.dragPreview.style.top = `${event2.clientY}px`;
+        this.dragPreview.style.left = `${event2.clientX}px`;
+        const nearestLine = this.getNearestLine(event2.clientX, event2.clientY);
+        if (nearestLine && nearestLine !== this.draggingElement) {
+          const rect = nearestLine.getBoundingClientRect();
+          const midPoint = rect.top + rect.height / 2;
+          if (event2.clientY < midPoint) {
+            this.showPlaceholder(nearestLine, "before");
+          } else {
+            const nextElement = nearestLine.nextElementSibling;
+            if (nextElement && nextElement.matches(".cm-line")) {
+              this.showPlaceholder(nextElement, "before");
+            } else {
+              this.showPlaceholder(nearestLine, "after");
+            }
+          }
+        } else {
+          this.hidePlaceholder();
+        }
+      }
+    };
+    this.onDragEnd = (event2) => {
+      var _a, _b;
+      if (this.draggingElement) {
+        this.dragPreview.style.display = "none";
+        this.hidePlaceholder();
+        const nearestLine = this.getNearestLine(event2.clientX, event2.clientY);
+        if (nearestLine && nearestLine !== this.draggingElement) {
+          const rect = nearestLine.getBoundingClientRect();
+          if (event2.clientY < rect.top + rect.height / 2) {
+            (_a = nearestLine.parentNode) == null ? void 0 : _a.insertBefore(this.draggingElement, nearestLine);
+          } else {
+            (_b = nearestLine.parentNode) == null ? void 0 : _b.insertBefore(this.draggingElement, nearestLine.nextElementSibling);
+          }
+        }
+        this.draggingElement.classList.remove("dragging");
+        this.updateEditorContent();
+        this.draggingElement = null;
+        document.removeEventListener("mousemove", this.onDragMove);
+        document.removeEventListener("mouseup", this.onDragEnd);
+        const lineElement = this.getNearestLine(event2.clientX, event2.clientY);
+        if (lineElement) {
+          this.showDragHandle(lineElement);
+        }
+      }
+    };
   }
   async onload() {
     console.log("Loading Block Reorder plugin");
-    this.dragHandle = document.createElement("div");
-    this.dragHandle.addClass("block-drag-handle");
-    this.dragHandle.innerHTML = "\u22EE\u22EE";
+    this.dragHandle = this.createDragHandle();
     document.body.appendChild(this.dragHandle);
-    this.registerDomEvent(document, "mouseover", this.onMouseOver.bind(this));
-    this.registerDomEvent(document, "mouseout", this.onMouseOut.bind(this));
+    this.dragPlaceholder = document.createElement("div");
+    this.dragPlaceholder.addClass("drag-placeholder");
+    document.body.appendChild(this.dragPlaceholder);
+    this.dragPreview = document.createElement("div");
+    this.dragPreview.addClass("drag-preview");
+    document.body.appendChild(this.dragPreview);
+    this.registerDomEvent(document, "mousemove", this.onMouseMove.bind(this));
     this.registerDomEvent(this.dragHandle, "mousedown", this.onDragStart.bind(this));
     this.registerDomEvent(document, "mousemove", this.onDragMove.bind(this));
     this.registerDomEvent(document, "mouseup", this.onDragEnd.bind(this));
     console.log("Block Reorder plugin loaded successfully");
   }
+  createDragHandle() {
+    const dragHandle = document.createElement("div");
+    dragHandle.className = "cm-drag-handler-container";
+    dragHandle.innerHTML = `
+            <span class="clickable-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-grip-vertical">
+                    <circle cx="9" cy="12" r="1"></circle>
+                    <circle cx="9" cy="5" r="1"></circle>
+                    <circle cx="9" cy="19" r="1"></circle>
+                    <circle cx="15" cy="12" r="1"></circle>
+                    <circle cx="15" cy="5" r="1"></circle>
+                    <circle cx="15" cy="19" r="1"></circle>
+                </svg>
+            </span>
+        `;
+    return dragHandle;
+  }
+  getNearestLine(x, y) {
+    const lines = Array.from(document.querySelectorAll(".cm-line"));
+    let nearestLine = null;
+    let minDistance = Infinity;
+    for (const line of lines) {
+      const rect = line.getBoundingClientRect();
+      const distance = Math.min(Math.abs(y - rect.top), Math.abs(y - rect.bottom));
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestLine = line;
+      }
+    }
+    return nearestLine;
+  }
+  isMouseNearHandle(event2) {
+    if (!this.dragHandle)
+      return false;
+    const handleRect = this.dragHandle.getBoundingClientRect();
+    const buffer = 20;
+    return event2.clientX >= handleRect.left - buffer && event2.clientX <= handleRect.right + buffer && event2.clientY >= handleRect.top - buffer && event2.clientY <= handleRect.bottom + buffer;
+  }
   onunload() {
     console.log("Unloading Block Reorder plugin");
     this.dragHandle.remove();
+    this.dragPlaceholder.remove();
+    this.dragPreview.remove();
   }
-  onMouseOver(event) {
-    const target = event.target;
-    if (target.matches(".cm-line")) {
-      this.showDragHandle(target);
-    }
-  }
-  onMouseOut(event) {
-    const relatedTarget = event.relatedTarget;
-    if (relatedTarget !== this.dragHandle && !(relatedTarget == null ? void 0 : relatedTarget.closest(".block-drag-handle"))) {
-      this.hideDragHandle();
+  onMouseOver(event2) {
+    const target = event2.target;
+    const cmLine = target.closest(".cm-line");
+    if (cmLine) {
+      this.currentLine = cmLine;
+      this.showDragHandle(this.currentLine);
     }
   }
   showDragHandle(target) {
+    if (!this.dragHandle)
+      return;
     const rect = target.getBoundingClientRect();
-    this.dragHandle.style.display = "block";
-    this.dragHandle.style.top = `${rect.top + window.scrollY}px`;
-    this.dragHandle.style.left = `${rect.left + window.scrollX - 20}px`;
-  }
-  hideDragHandle() {
-    this.dragHandle.style.display = "none";
-  }
-  onDragStart(event) {
-    const lineElement = this.getLineElementFromPoint(event.clientX, event.clientY);
-    if (lineElement) {
-      this.draggingElement = lineElement;
-      this.dragStartY = event.clientY;
-      event.preventDefault();
+    const distanceFromText = 30;
+    const squareSize = 26;
+    const isHeader = target.classList.contains("HyperMD-header");
+    let verticalPosition;
+    if (isHeader) {
+      const headerSpan = target.querySelector(".cm-header");
+      if (headerSpan) {
+        const headerRect = headerSpan.getBoundingClientRect();
+        verticalPosition = headerRect.top + (headerRect.height - squareSize) / 2;
+      } else {
+        verticalPosition = rect.top + (rect.height - squareSize) / 2;
+      }
+    } else {
+      verticalPosition = rect.top + (rect.height - squareSize) / 2;
     }
+    this.dragHandle.style.top = `${verticalPosition + window.scrollY}px`;
+    this.dragHandle.style.left = `${rect.left + window.scrollX - distanceFromText}px`;
+    this.dragHandle.style.width = `${squareSize}px`;
+    this.dragHandle.style.height = `${squareSize}px`;
+    this.dragHandle.style.display = "flex";
   }
-  onDragMove(event) {
-    var _a, _b;
-    if (this.draggingElement) {
-      const hoverElement = this.getLineElementFromPoint(event.clientX, event.clientY);
-      if (hoverElement && hoverElement !== this.draggingElement) {
-        const rect = hoverElement.getBoundingClientRect();
-        if (event.clientY < rect.top + rect.height / 2) {
-          (_a = hoverElement.parentNode) == null ? void 0 : _a.insertBefore(this.draggingElement, hoverElement);
-        } else {
-          (_b = hoverElement.parentNode) == null ? void 0 : _b.insertBefore(this.draggingElement, hoverElement.nextElementSibling);
+  getLineElementFromPoint(x, y) {
+    const elements = document.elementsFromPoint(x, y);
+    for (const element of elements) {
+      if (element.classList.contains("cm-line")) {
+        return element;
+      }
+      const rect = element.getBoundingClientRect();
+      if (Math.abs(x - rect.left) <= 120 || Math.abs(x - rect.right) <= 120) {
+        const closestLine = element.closest(".cm-line");
+        if (closestLine) {
+          return closestLine;
         }
       }
     }
-  }
-  onDragEnd() {
-    if (this.draggingElement) {
-      this.updateEditorContent();
-      this.draggingElement = null;
-    }
-  }
-  getLineElementFromPoint(x, y) {
-    const element = document.elementFromPoint(x, y);
-    return element ? element.closest(".cm-line") : null;
+    return null;
   }
   updateEditorContent() {
     const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
     if (view) {
       const editor = view.editor;
-      const content = Array.from(document.querySelectorAll(".cm-line")).map((line) => line.innerText).join("\n");
-      editor.setValue(content);
+      const content = editor.getValue();
+      const lines = content.split("\n");
+      const frontMatterEndIndex = this.getFrontMatterEndIndex(lines);
+      const newOrder = Array.from(document.querySelectorAll(".cm-line")).map((line) => line.textContent || "");
+      const updatedContent = [
+        ...lines.slice(0, frontMatterEndIndex),
+        ...newOrder
+      ].join("\n");
+      editor.setValue(updatedContent);
     }
+  }
+  getFrontMatterEndIndex(lines) {
+    if (lines[0] === "---") {
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i] === "---") {
+          return i + 1;
+        }
+      }
+    }
+    return 0;
+  }
+  showPlaceholder(element, position) {
+    const rect = element.getBoundingClientRect();
+    this.dragPlaceholder.style.display = "block";
+    this.dragPlaceholder.style.width = `${rect.width}px`;
+    this.dragPlaceholder.style.left = `${rect.left}px`;
+    if (position === "before") {
+      this.dragPlaceholder.style.top = `${rect.top - 5}px`;
+    } else {
+      this.dragPlaceholder.style.top = `${rect.bottom}px`;
+    }
+  }
+  hidePlaceholder() {
+    this.dragPlaceholder.style.display = "none";
   }
 };
