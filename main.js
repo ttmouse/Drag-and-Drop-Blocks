@@ -36,52 +36,53 @@ var BlockReorderPlugin = class extends import_obsidian.Plugin {
     this.originalContent = "";
     this.currentLine = null;
     this.hideTimeout = null;
-    this.onMouseMove = (event2) => {
+    this.lastMouseEvent = null;
+    this.onMouseMove = (event) => {
+      this.lastMouseEvent = event;
       if (this.draggingElement)
         return;
-      const target = event2.target;
-      const cmLine = this.getNearestLine(event2.clientX, event2.clientY);
+      const cmLine = this.getNearestLine(event.clientX, event.clientY);
       if (cmLine) {
         this.currentLine = cmLine;
         this.showDragHandle(cmLine);
-      } else if (this.dragHandle && !this.isMouseNearHandle(event2)) {
+      } else if (this.dragHandle && !this.isMouseNearHandle(event)) {
         this.hideDragHandle();
       }
     };
     this.hideDragHandle = () => {
       if (this.dragHandle) {
         setTimeout(() => {
-          if (this.dragHandle && !this.isMouseNearHandle(event)) {
+          var _a;
+          if (this.dragHandle && this.currentLine !== ((_a = this.lastMouseEvent) == null ? void 0 : _a.target)) {
             this.dragHandle.style.display = "none";
           }
         }, 100);
       }
     };
-    this.onDragStart = (event2) => {
-      if (this.currentLine) {
+    this.onDragStart = (event) => {
+      if (this.currentLine && this.currentLine.classList.contains("draggable-line")) {
         this.draggingElement = this.currentLine;
-        this.dragStartY = event2.clientY;
+        this.dragStartY = event.clientY;
         this.hideDragHandle();
         this.dragPreview.innerHTML = this.draggingElement.innerHTML;
         this.dragPreview.style.display = "block";
-        this.dragPreview.style.top = `${event2.clientY}px`;
-        this.dragPreview.style.left = `${event2.clientX}px`;
+        this.dragPreview.style.top = `${event.clientY}px`;
+        this.dragPreview.style.left = `${event.clientX}px`;
         this.draggingElement.classList.add("dragging");
-        this.originalContent = this.draggingElement.innerHTML;
-        event2.preventDefault();
-        event2.stopPropagation();
+        event.preventDefault();
+        event.stopPropagation();
       }
     };
-    this.onDragMove = (event2) => {
+    this.onDragMove = (event) => {
       if (this.draggingElement) {
         this.hideDragHandle();
-        this.dragPreview.style.top = `${event2.clientY}px`;
-        this.dragPreview.style.left = `${event2.clientX}px`;
-        const nearestLine = this.getNearestLine(event2.clientX, event2.clientY);
+        this.dragPreview.style.top = `${event.clientY}px`;
+        this.dragPreview.style.left = `${event.clientX}px`;
+        const nearestLine = this.getNearestLine(event.clientX, event.clientY);
         if (nearestLine && nearestLine !== this.draggingElement) {
           const rect = nearestLine.getBoundingClientRect();
           const midPoint = rect.top + rect.height / 2;
-          if (event2.clientY < midPoint) {
+          if (event.clientY < midPoint) {
             this.showPlaceholder(nearestLine, "before");
           } else {
             const nextElement = nearestLine.nextElementSibling;
@@ -96,26 +97,24 @@ var BlockReorderPlugin = class extends import_obsidian.Plugin {
         }
       }
     };
-    this.onDragEnd = (event2) => {
+    this.onDragEnd = (event) => {
       var _a, _b;
       if (this.draggingElement) {
         this.dragPreview.style.display = "none";
         this.hidePlaceholder();
-        const nearestLine = this.getNearestLine(event2.clientX, event2.clientY);
-        if (nearestLine && nearestLine !== this.draggingElement) {
+        const nearestLine = this.getNearestLine(event.clientX, event.clientY);
+        if (nearestLine && nearestLine !== this.draggingElement && nearestLine.classList.contains("draggable-line")) {
           const rect = nearestLine.getBoundingClientRect();
-          if (event2.clientY < rect.top + rect.height / 2) {
+          if (event.clientY < rect.top + rect.height / 2) {
             (_a = nearestLine.parentNode) == null ? void 0 : _a.insertBefore(this.draggingElement, nearestLine);
           } else {
             (_b = nearestLine.parentNode) == null ? void 0 : _b.insertBefore(this.draggingElement, nearestLine.nextElementSibling);
           }
+          this.updateEditorContent();
         }
         this.draggingElement.classList.remove("dragging");
-        this.updateEditorContent();
         this.draggingElement = null;
-        document.removeEventListener("mousemove", this.onDragMove);
-        document.removeEventListener("mouseup", this.onDragEnd);
-        const lineElement = this.getNearestLine(event2.clientX, event2.clientY);
+        const lineElement = this.getNearestLine(event.clientX, event.clientY);
         if (lineElement) {
           this.showDragHandle(lineElement);
         }
@@ -169,12 +168,12 @@ var BlockReorderPlugin = class extends import_obsidian.Plugin {
     }
     return nearestLine;
   }
-  isMouseNearHandle(event2) {
-    if (!this.dragHandle)
+  isMouseNearHandle(event) {
+    if (!this.dragHandle || !event)
       return false;
     const handleRect = this.dragHandle.getBoundingClientRect();
     const buffer = 20;
-    return event2.clientX >= handleRect.left - buffer && event2.clientX <= handleRect.right + buffer && event2.clientY >= handleRect.top - buffer && event2.clientY <= handleRect.bottom + buffer;
+    return event.clientX >= handleRect.left - buffer && event.clientX <= handleRect.right + buffer && event.clientY >= handleRect.top - buffer && event.clientY <= handleRect.bottom + buffer;
   }
   onunload() {
     console.log("Unloading Block Reorder plugin");
@@ -182,8 +181,8 @@ var BlockReorderPlugin = class extends import_obsidian.Plugin {
     this.dragPlaceholder.remove();
     this.dragPreview.remove();
   }
-  onMouseOver(event2) {
-    const target = event2.target;
+  onMouseOver(event) {
+    const target = event.target;
     const cmLine = target.closest(".cm-line");
     if (cmLine) {
       this.currentLine = cmLine;
@@ -237,14 +236,22 @@ var BlockReorderPlugin = class extends import_obsidian.Plugin {
       const editor = view.editor;
       const content = editor.getValue();
       const lines = content.split("\n");
-      const frontMatterEndIndex = this.getFrontMatterEndIndex(lines);
-      const newOrder = Array.from(document.querySelectorAll(".cm-line")).map((line) => line.textContent || "");
-      const updatedContent = [
-        ...lines.slice(0, frontMatterEndIndex),
-        ...newOrder
-      ].join("\n");
-      editor.setValue(updatedContent);
+      const updatedLines = Array.from(document.querySelectorAll(".cm-line")).map((line) => line.textContent || "");
+      let updatedContent = "";
+      let draggableIndex = 0;
+      for (let i = 0; i < lines.length; i++) {
+        if (this.isLineEditable(lines[i])) {
+          updatedContent += updatedLines[draggableIndex] + "\n";
+          draggableIndex++;
+        } else {
+          updatedContent += lines[i] + "\n";
+        }
+      }
+      editor.setValue(updatedContent.trim());
     }
+  }
+  isLineEditable(line) {
+    return !line.startsWith("#") && !line.startsWith("---");
   }
   getFrontMatterEndIndex(lines) {
     if (lines[0] === "---") {

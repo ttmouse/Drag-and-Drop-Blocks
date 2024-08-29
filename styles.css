@@ -21,6 +21,7 @@
     display: none;
 }
 
+
 .cm-line.dragging {
     opacity: 0.5;
     background-color: var(--background-primary-alt);
@@ -28,11 +29,9 @@
 
 
 
-
 .cm-drag-handler-container:hover {
     background-color: var(--background-primary-alt);
 }
-
 
 .cm-drag-handler-container {
     position: absolute;

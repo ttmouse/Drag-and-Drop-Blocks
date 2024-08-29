@@ -10,6 +10,7 @@ export default class BlockReorderPlugin extends Plugin {
     originalContent: string = '';
     currentLine: HTMLElement | null = null;
     hideTimeout: NodeJS.Timeout | null = null;
+    lastMouseEvent: MouseEvent | null = null;
 
     // 1.1 插件加载
     async onload() {
@@ -59,11 +60,12 @@ export default class BlockReorderPlugin extends Plugin {
 
     // 1.3 鼠标移动处理
     onMouseMove = (event: MouseEvent) => {
+        this.lastMouseEvent = event; // 保存最后的鼠标事件
+    
         if (this.draggingElement) return; // 如果正在拖拽，不处理滑块显示
-
-        const target = event.target as HTMLElement;
+    
         const cmLine = this.getNearestLine(event.clientX, event.clientY);
-
+    
         if (cmLine) {
             this.currentLine = cmLine;
             this.showDragHandle(cmLine);
@@ -97,12 +99,12 @@ export default class BlockReorderPlugin extends Plugin {
 
 
     // 1.15 检查鼠标是否在滑块附近
-    isMouseNearHandle(event: MouseEvent): boolean {
-        if (!this.dragHandle) return false;
-
+    isMouseNearHandle(event: MouseEvent | undefined): boolean {
+        if (!this.dragHandle || !event) return false;
+    
         const handleRect = this.dragHandle.getBoundingClientRect();
         const buffer = 20; // 扩大检测区域
-
+    
         return (
             event.clientX >= handleRect.left - buffer &&
             event.clientX <= handleRect.right + buffer &&
@@ -110,7 +112,6 @@ export default class BlockReorderPlugin extends Plugin {
             event.clientY <= handleRect.bottom + buffer
         );
     }
-
 
     // 1.2 插件卸载
     onunload() {
@@ -174,7 +175,7 @@ export default class BlockReorderPlugin extends Plugin {
         if (this.dragHandle) {
             // 使用 setTimeout 来延迟隐藏滑块
             setTimeout(() => {
-                if (this.dragHandle && !this.isMouseNearHandle(event as MouseEvent)) {
+                if (this.dragHandle && this.currentLine !== this.lastMouseEvent?.target) {
                     this.dragHandle.style.display = 'none';
                 }
             }, 100); // 100ms 延迟
@@ -304,6 +305,7 @@ export default class BlockReorderPlugin extends Plugin {
         }
     }
 
+    
     // 1.12 获取前置元数据结束索引
     getFrontMatterEndIndex(lines: string[]): number {
         if (lines[0] === '---') {
