@@ -37,6 +37,7 @@ export class BlockMover {
         let changes = [];
         let insertPos;
         let newCursorPos;
+        
 
         if (toLine > fromLine) {
             // 向下移动
@@ -62,13 +63,26 @@ export class BlockMover {
         } else {
             // 向上移动
             console.log('向上移动');
-            const targetLine = doc.line(toLine);
-            insertPos = targetLine.from;
-            changes = [
-                { from: insertPos, insert: lineContent + '\n' },
-                { from: fromLineContent.from, to: fromLineContent.to + (fromLine === totalLines ? 0 : 1), insert: '' }
-            ];
-            newCursorPos = insertPos + lineContent.length;
+            const targetLine = doc.line(toLine - 1);
+            const lastLine = doc.line(doc.lines);
+            insertPos = targetLine.to; // 使用 .to 而不是 .from
+
+            if (fromLine === totalLines) {
+                // 如果是最后一行向上移动,直接删除最后一行内容。
+                console.log('最后一行向上移动');
+                const secondLastLine = doc.line(totalLines - 1);
+                changes = [
+                    { from: insertPos, insert: '\n' + lineContent }, // 添加换行符
+                    { from: secondLastLine.to, to: doc.length } // 直接删除最后一行
+
+                ];
+            } else {
+                changes = [
+                    { from: insertPos, insert: '\n' + lineContent }, // 添加换行符
+                    { from: fromLineContent.from, to: fromLineContent.to + 1, insert: '' }
+                ];
+            }
+            newCursorPos = insertPos + lineContent.length + 1; // +1 因为添加了换行符
         }
 
         console.log('准备执行的更改:', changes);
@@ -110,21 +124,21 @@ export class BlockMover {
         }
     }
 
-    // 模块编号：2
-    // 功能：获取文档属性信息结束的位置
-    // 输入：doc (any)
-    // 输出：number (文档属性信息结束的位置)
-    private static getFrontmatterEndPosition(doc: any): number {
-        const firstLine = doc.line(1);
-        if (firstLine.text.trim() !== '---') {
-            return 0; // 没有文档属性信息
-        }
-        for (let i = 2; i <= doc.lines; i++) {
-            const line = doc.line(i);
-            if (line.text.trim() === '---') {
-                return line.to;
-            }
-        }
-        return 0; // 未找到结束的文档属性信息分隔符
-    }
+    // // 模块编号：2
+    // // 功能：获取文档属性信息结束的位置
+    // // 输入：doc (any)
+    // // 输出：number (文档属性信息结束的位置)
+    // private static getFrontmatterEndPosition(doc: any): number {
+    //     const firstLine = doc.line(1);
+    //     if (firstLine.text.trim() !== '---') {
+    //         return 0; // 没有文档属性信息
+    //     }
+    //     for (let i = 2; i <= doc.lines; i++) {
+    //         const line = doc.line(i);
+    //         if (line.text.trim() === '---') {
+    //             return line.to;
+    //         }
+    //     }
+    //     return 0; // 未找到结束的文档属性信息分隔符
+    // }
 }
