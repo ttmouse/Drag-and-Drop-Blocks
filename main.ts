@@ -5,12 +5,15 @@ import { dragHandleField, draggingLineField, dragHandlePlugin } from './src/Drag
 import { BlockMover } from './src/BlockMover';
 import { getEditorView } from './src/utils';
 
+
 export default class DragAndDropBlocksPlugin extends Plugin {
     private dragVisuals: DragVisuals;
     private draggingStartPos: number | null = null;
+    private sourceLineNumber: number | null = null;
 
+
+    // 1. 插件加载
     async onload() {
-        console.log('Loading DragAndDropBlocks plugin');
 
         this.dragVisuals = new DragVisuals(this.app);
 
@@ -21,17 +24,17 @@ export default class DragAndDropBlocksPlugin extends Plugin {
             ...DragVisuals.getDragExtensions()
         ]);
 
-        // 添加拖动和放置事件监听器
+        // 1.1 添加拖动和放置事件监听器
         this.addDragAndDropListeners();
 
 
-        console.log('DragAndDropBlocks plugin loaded');
     }
 
+    // 2. 插件卸载
     onunload() {
-        console.log('Unloading DragAndDropBlocks plugin');
     }
 
+    // 3. 添加拖放监听器
     private addDragAndDropListeners() {
         this.registerDomEvent(document, 'dragstart', this.onDragStart.bind(this));
         this.registerDomEvent(document, 'dragover', this.onDragOver.bind(this));
@@ -39,35 +42,33 @@ export default class DragAndDropBlocksPlugin extends Plugin {
         this.registerDomEvent(document, 'dragend', this.onDragEnd.bind(this));
     }
 
+
+    // 4. 拖动开始事件处理 
     private onDragStart(event: DragEvent) {
-        // 获取拖动目标元素
+
+        console.clear();
+        // 4.1 获取拖动目标元素
         const target = event.target as HTMLElement;
-        // 如果目标不是拖动手柄容器，则退出
+        // 4.2 如果目标不是拖动手柄容器，则退出
         if (!target.classList.contains('cm-drag-handler-container')) return;
 
-        // 获取编辑器视图
+        // 4.3 获取编辑器视图
         const view = getEditorView(this.app);
-        // 如果无法获取视图，则退出
+        // 4.4 如果无法获取视图，则退出
         if (!view) return;
 
-        // 获取目标元素在文档中的位置
+        // 4.5 获取目标元素在文档中的位置
         const pos = view.posAtDOM(target);
-        // 如果无法获取位置，则退出
+        // 4.6 如果无法获取位置，则退出
         if (pos === null) return;
 
-        // 获取拖动开始的行
+        // 4.7 获取拖动开始的行
         const line = view.state.doc.lineAt(pos);
-        // 记录拖动开始的位置
+        // 4.8 记录拖动开始的位置
         this.draggingStartPos = line.from;
+        this.sourceLineNumber = line.number;
 
-        // 记录拖动开始的信息
-        console.log('拖动开始:', {
-            lineNumber: line.number,
-            lineContent: line.text,
-            startPosition: this.draggingStartPos
-        });
-
-        // 设置拖动效果为移动
+        // 4.9 设置拖动效果为移动
         event.dataTransfer!.effectAllowed = 'move';
 
         // 创建拖动预览
@@ -76,53 +77,80 @@ export default class DragAndDropBlocksPlugin extends Plugin {
         this.dragVisuals.setDraggingLine(view, line.number);
     }
 
+
+    // 5. 拖动过程中事件处理，拖动过程中的视觉反馈
     private onDragOver(event: DragEvent) {
         event.preventDefault();
-        event.dataTransfer!.dropEffect = 'move'; // 明确指定为移动操作
-
         const view = getEditorView(this.app);
-        if (!view) return;
+        if (!view || this.sourceLineNumber === null) return;
 
         const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
         if (pos === null) return;
 
-        this.dragVisuals.showDragPlaceholder(view, pos);
+        this.dragVisuals.showDragPlaceholder(view, pos, this.sourceLineNumber);
     }
 
+    // 6. 拖动结束事件处理，它决定了拖动结束后块的最终位置
     private onDrop(event: DragEvent) {
         event.preventDefault();
+        console.log('6.1 拖放事件触发');
+    
         const view = getEditorView(this.app);
-        if (!view || this.draggingStartPos === null) return;
-
-        const targetPos = view.posAtCoords({ x: event.clientX, y: event.clientY });
-        if (targetPos === null) return;
-
-        const sourcePos = this.draggingStartPos;
-        const sourceLine = view.state.doc.lineAt(sourcePos);
-        const targetLine = view.state.doc.lineAt(targetPos);
-
-        console.log('拖动结束:', {
-            sourceLineNumber: sourceLine.number,
-            targetLineNumber: targetLine.number,
-            targetPosition: targetPos
-        });
-
-        if (sourceLine.number !== targetLine.number) {
-            // 修改：传递正确的目标行号
-            let targetLineNumber = targetLine.number;
-            if (targetLineNumber > sourceLine.number) {
-                targetLineNumber -= 1; // 向下拖动时，目标行号需要减1
-            }
-            BlockMover.moveBlock(view, sourceLine.number - 1, targetLineNumber - 1);
+        if (!view) {
+            console.error('6.2 未找到编辑器视图');
+            return;
         }
-
+    
+        const targetLine = this.dragVisuals.getTargetLine();
+        const sourceLineNumber = this.dragVisuals.getSourceLineNumber();
+        
+        console.log('6.3 拖放信息:', {
+            源行号: sourceLineNumber,
+            目标行号: targetLine
+        });
+        
+        if (targetLine === null || sourceLineNumber === null) {
+            console.error('6.4 无法确定目标行或源行');
+            return;
+        }
+    
+        // 6.5 检查是否需要移动
+        if (sourceLineNumber !== targetLine && targetLine !== sourceLineNumber + 1) {
+            console.log('6.6 正在移动块');
+            BlockMover.moveBlock(view, sourceLineNumber, targetLine);
+        } else {
+            console.log('6.7 源行和目标行相同或相邻，无需移动');
+        }
+    
         this.dragVisuals.hideDragPlaceholder();
         this.dragVisuals.setDraggingLine(view, null);
-
-        this.draggingStartPos = null;
-        console.log('Drop completed');
+        console.log('6.8 拖放完成');
+    }
+    
+    // 7. 获取文档属性信息结束位置
+    private getFrontmatterEndPosition(doc: any): number {
+        const firstLine = doc.line(1);
+        if (firstLine.text.trim() !== '---') {
+            return 0; // 没有文档属性信息
+        }
+        for (let i = 2; i <= doc.lines; i++) {
+            const line = doc.line(i);
+            if (line.text.trim() === '---') {
+                return line.to;
+            }
+        }
+        return 0; // 未找到结束的文档属性信息分隔符
     }
 
+    // 8. 判断是否应该在当前位置之前插入
+    private shouldInsertBefore(view: EditorView, pos: number): boolean {
+        const line = view.state.doc.lineAt(pos);
+        const lineStart = line.from;
+        const lineMiddle = lineStart + Math.floor(line.length / 2);
+        return pos < lineMiddle;
+    }
+
+    // 9. 拖动结束事件处理
     private onDragEnd(event: DragEvent) {
         const view = getEditorView(this.app);
         if (!view) return;
@@ -131,6 +159,5 @@ export default class DragAndDropBlocksPlugin extends Plugin {
         this.dragVisuals.setDraggingLine(view, null);
 
         this.draggingStartPos = null;
-        console.log('Drag ended');
     }
 }

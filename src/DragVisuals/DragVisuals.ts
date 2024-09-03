@@ -14,8 +14,8 @@ export class DragVisuals {
     }
 
     // 1. 显示拖动占位符
-    showDragPlaceholder(view: EditorView, pos: number) {
-        this.dragPlaceholder.showDragPlaceholder(view, pos);
+    showDragPlaceholder(view: EditorView, pos: number, sourceLineNumber: number) {
+        this.dragPlaceholder.showDragPlaceholder(view, pos, sourceLineNumber);
     }
 
     // 2. 隐藏拖动占位符
@@ -26,7 +26,6 @@ export class DragVisuals {
 
     // 1. 新增方法：创建拖动预览
     createDragPreview(text: string, event: DragEvent): void {
-        return;
         const dragImage = document.createElement('div');
         dragImage.textContent = text.slice(0, 20) + '...';
         dragImage.className = 'drag-preview';
@@ -61,6 +60,18 @@ export class DragVisuals {
             draggingLineField,
             dragHandlePlugin
         ];
+    }
+
+    getPlaceholderPosition(): number | null {
+        return this.dragPlaceholder.getPlaceholderPosition();
+    }
+
+    getTargetLine(): number | null {
+        return this.dragPlaceholder.getTargetLine();
+    }
+
+    getSourceLineNumber(): number | null {
+        return this.dragPlaceholder.getSourceLineNumber();
     }
 }
 
