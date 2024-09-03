@@ -45,8 +45,8 @@ export default class DragAndDropBlocksPlugin extends Plugin {
 
     // 4. 拖动开始事件处理 
     private onDragStart(event: DragEvent) {
-
         console.clear();
+
         // 4.1 获取拖动目标元素
         const target = event.target as HTMLElement;
         // 4.2 如果目标不是拖动手柄容器，则退出
@@ -93,38 +93,26 @@ export default class DragAndDropBlocksPlugin extends Plugin {
     // 6. 拖动结束事件处理，它决定了拖动结束后块的最终位置
     private onDrop(event: DragEvent) {
         event.preventDefault();
-        console.log('6.1 拖放事件触发');
     
         const view = getEditorView(this.app);
         if (!view) {
-            console.error('6.2 未找到编辑器视图');
             return;
         }
     
         const targetLine = this.dragVisuals.getTargetLine();
         const sourceLineNumber = this.dragVisuals.getSourceLineNumber();
         
-        console.log('6.3 拖放信息:', {
-            源行号: sourceLineNumber,
-            目标行号: targetLine
-        });
-        
         if (targetLine === null || sourceLineNumber === null) {
-            console.error('6.4 无法确定目标行或源行');
             return;
         }
     
         // 6.5 检查是否需要移动
         if (sourceLineNumber !== targetLine && targetLine !== sourceLineNumber + 1) {
-            console.log('6.6 正在移动块');
             BlockMover.moveBlock(view, sourceLineNumber, targetLine);
-        } else {
-            console.log('6.7 源行和目标行相同或相邻，无需移动');
         }
     
         this.dragVisuals.hideDragPlaceholder();
         this.dragVisuals.setDraggingLine(view, null);
-        console.log('6.8 拖放完成');
     }
     
     // 7. 获取文档属性信息结束位置

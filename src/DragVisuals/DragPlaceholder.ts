@@ -58,19 +58,25 @@ export class DragPlaceholder {
             // 如果目标位置在文档属性内，将占位符放在第一个内容行的顶部
             placeholderPos = doc.line(firstContentLineNumber).from;
             targetLineNumber = firstContentLineNumber;
-        } else if (pos >= doc.length) {
-            // 如果在文档末尾，将占位符放在最后
-            placeholderPos = doc.length;
-            targetLineNumber = doc.lines + 1;
-        } else if (pos <= line.from + (line.to - line.from) / 2) {
-            // 如果在行的上半部分，将占位符放在行的开始
-            placeholderPos = line.from;
-            targetLineNumber = line.number;
         } else {
-            // 如果在行的下半部分，将占位符放在下一行的开始
-            placeholderPos = line.to + 1;
-            targetLineNumber = line.number + 1;
+            // 处理所有其他行，包括空白行和文档末尾
+            const lineStart = line.from;
+            const lineEnd = line.to;
+            const lineMiddle = lineStart + Math.floor((lineEnd - lineStart) / 2);
+
+            if (pos <= lineMiddle) {
+                // 如果在行的上半部分，将占位符放在行的开始
+                placeholderPos = lineStart;
+                targetLineNumber = line.number;
+            } else {
+                // 如果在行的下半部分，将占位符放在下一行的开始
+                placeholderPos = lineEnd;
+                targetLineNumber = line.number + 1;
+            }
         }
+
+        // 确保不会超出文档范围
+        targetLineNumber = Math.min(targetLineNumber, doc.lines + 1);
 
         const rect = view.coordsAtPos(placeholderPos);
         if (!rect) return;
@@ -85,17 +91,18 @@ export class DragPlaceholder {
         this.element.style.width = `${lineRect.width}px`;
         this.element.style.height = '2px';
 
+        // 设置占位符的垂直位置
         if (targetLineNumber === firstContentLineNumber) {
             // 如果是在第一个内容行，将占位符放在其上方
             const firstContentLineRect = view.coordsAtPos(placeholderPos);
             if (firstContentLineRect) {
-                this.element.style.top = `${firstContentLineRect.top - 5}px`;
+                this.element.style.top = `${firstContentLineRect.top - 2}px`;
             }
         } else if (targetLineNumber > doc.lines) {
             // 如果是在文档末尾，将占位符放在最后一行下方
             this.element.style.top = `${rect.bottom + 2}px`;
         } else {
-            // 其他情况，将占位符放在两行之间
+            // 其他所有情况，包括空白行
             const currentLineRect = view.coordsAtPos(line.from);
             const nextLineRect = view.coordsAtPos(doc.line(targetLineNumber).from);
             if (currentLineRect && nextLineRect) {
@@ -107,15 +114,6 @@ export class DragPlaceholder {
         this.targetLine = targetLineNumber;
         this.sourceLineNumber = sourceLineNumber;
 
-        // console.log('占位符位置:', {
-        //     位置: this.currentPosition,
-        //     目标行号: this.targetLine,
-        //     源行号: this.sourceLineNumber,
-        //     当前行内容: line.text,
-        //     矩形: {top: rect.top, left: rect.left},
-        //     文档属性行数: frontmatterLineCount,
-        //     第一个内容行号: firstContentLineNumber
-        // });
     }
 
     // 4. 隐藏拖动占位符
