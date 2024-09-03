@@ -74,7 +74,6 @@ export class BlockMover {
                 changes = [
                     { from: insertPos, insert: '\n' + lineContent }, // 添加换行符
                     { from: secondLastLine.to, to: doc.length } // 直接删除最后一行
-
                 ];
             } else {
                 changes = [

@@ -4,7 +4,7 @@
     "version": "1.0.0",
     "minAppVersion": "0.15.0",
     "description": "Reorder blocks by dragging and dropping.",
-    "author": "Your Name",
-    "authorUrl": "https://github.com/yourusername",
+    "author": "ttmouse",
+    "authorUrl": "https://github.com/ttmouse",
     "isDesktopOnly": false
 }

@@ -51,29 +51,31 @@ var DragPlaceholder = class {
     dragPlaceholder.style.zIndex = "1000";
     return dragPlaceholder;
   }
-  getFrontmatterEndPosition(doc) {
+  getFrontmatterLineCount(doc) {
+    let lineCount = 0;
     const firstLine = doc.line(1);
     if (firstLine.text.trim() !== "---") {
       return 0;
     }
     for (let i = 2; i <= doc.lines; i++) {
+      lineCount++;
       const line = doc.line(i);
       if (line.text.trim() === "---") {
-        return line.to;
+        return lineCount + 1;
       }
     }
     return 0;
   }
   showDragPlaceholder(view, pos, sourceLineNumber) {
     const doc = view.state.doc;
+    const frontmatterLineCount = this.getFrontmatterLineCount(doc);
+    const firstContentLineNumber = frontmatterLineCount + 1;
     const line = doc.lineAt(pos);
     let placeholderPos;
     let targetLineNumber;
-    const frontmatterEndPos = this.getFrontmatterEndPosition(doc);
-    const firstContentLine = doc.lineAt(frontmatterEndPos);
-    if (pos <= firstContentLine.from) {
-      placeholderPos = firstContentLine.from;
-      targetLineNumber = firstContentLine.number;
+    if (line.number < firstContentLineNumber) {
+      placeholderPos = doc.line(firstContentLineNumber).from;
+      targetLineNumber = firstContentLineNumber;
     } else if (pos >= doc.length) {
       placeholderPos = doc.length;
       targetLineNumber = doc.lines + 1;
@@ -95,16 +97,16 @@ var DragPlaceholder = class {
     this.element.style.left = `${lineRect.left}px`;
     this.element.style.width = `${lineRect.width}px`;
     this.element.style.height = "2px";
-    if (placeholderPos <= firstContentLine.from) {
-      const firstContentLineRect = view.coordsAtPos(firstContentLine.from);
+    if (targetLineNumber === firstContentLineNumber) {
+      const firstContentLineRect = view.coordsAtPos(placeholderPos);
       if (firstContentLineRect) {
-        this.element.style.top = `${firstContentLineRect.top - 2}px`;
+        this.element.style.top = `${firstContentLineRect.top - 5}px`;
       }
-    } else if (line.number === doc.lines) {
+    } else if (targetLineNumber > doc.lines) {
       this.element.style.top = `${rect.bottom + 2}px`;
     } else {
       const currentLineRect = view.coordsAtPos(line.from);
-      const nextLineRect = view.coordsAtPos(doc.line(line.number + 1).from);
+      const nextLineRect = view.coordsAtPos(doc.line(targetLineNumber).from);
       if (currentLineRect && nextLineRect) {
         this.element.style.top = `${(currentLineRect.bottom + nextLineRect.top) / 2}px`;
       }
