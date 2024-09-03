@@ -9,7 +9,7 @@
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": [],
-  "author": "",
+  "author": "ttmouse",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^16.11.6",
@@ -23,5 +23,13 @@
   },
   "dependencies": {
     "@codemirror/view": "^6.33.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ttmouse/Drag-and-Drop-Blocks.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ttmouse/Drag-and-Drop-Blocks/issues"
+  },
+  "homepage": "https://github.com/ttmouse/Drag-and-Drop-Blocks#readme"
 }
