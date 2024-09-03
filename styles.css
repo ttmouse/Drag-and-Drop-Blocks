@@ -81,8 +81,15 @@
 
 
 
-
-
 .clickable-icon:hover {
     background-color: var(--background-modifier-hover);
+}
+
+.HyperMD-list-line.HyperMD-list-line-6.cm-line,
+.HyperMD-list-line.HyperMD-list-line-5.cm-line,
+.HyperMD-list-line.HyperMD-list-line-4.cm-line,
+.HyperMD-list-line.HyperMD-list-line-3.cm-line,
+.HyperMD-list-line.HyperMD-list-line-2.cm-line,
+.HyperMD-list-line.HyperMD-list-line-1.cm-line{
+    padding-inline-start: var(--list-padding-start1, 0px) !important;
 }
