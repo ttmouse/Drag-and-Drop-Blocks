@@ -1,5 +1,7 @@
 # Obsidian Drag and Drop Blocks Plugin
 
+![image](./src/drop.png)
+
 ## 简介
 
 Obsidian Drag and Drop Blocks 是一个为 Obsidian 设计的插件，允许用户通过简单的拖放操作来重新排列文档中的文本块。这个插件旨在提高笔记整理和编辑的效率，使得重组文档结构变得更加直观和便捷。
@@ -49,4 +51,4 @@ Obsidian Drag and Drop Blocks 是一个为 Obsidian 设计的插件，允许用�
 
 ---
 
-由 ttmous 用 ❤️ 开发
+由 ttmouse 用 ❤️ 开发
