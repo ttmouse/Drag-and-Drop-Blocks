@@ -4,6 +4,24 @@
     background-color: var(--background-primary-alt);
 }
 
+
+/* 拖动占位符 */
+.drag-placeholder {
+    position: absolute;
+    height: 2px;
+    background-color: var(--interactive-accent);
+    display: none;
+    z-index: 1000;
+}
+
+.drag-placeholder-visible {
+    display: block;
+    left: var(--left);
+    width: var(--width);
+    top: var(--top);
+}
+
+/* 拖动预览 */
 .drag-preview {
     padding: 5px;
     background: white;
